@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coin Flip Tycoon</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for aesthetic */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+        }
+        .container-card {
+            background-color: #2d3748; /* Slightly lighter card color */
+            box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.7), 0 5px 10px -5px rgba(0, 0, 0, 0.4);
+        }
+        .flip-btn {
+            background-image: linear-gradient(to right, #4c51bf, #6b46c1); /* Indigo/Purple Gradient */
+            transition: all 0.1s ease-in-out;
+            animation: pulse-shadow 3s infinite;
+        }
+        .flip-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(107, 70, 193, 0.6);
+        }
+        .flip-btn:active {
+            transform: translateY(0);
+        }
+        @keyframes pulse-shadow {
+            0% { box-shadow: 0 0 0 rgba(107, 70, 193, 0); }
+            50% { box-shadow: 0 0 15px rgba(107, 70, 193, 0.5); }
+            100% { box-shadow: 0 0 0 rgba(107, 70, 193, 0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="game-container" class="container-card w-full max-w-lg mx-auto p-6 rounded-xl text-white">
+
+        <h1 class="text-3xl font-bold text-center mb-6 text-indigo-300">Coin Flip Tycoon</h1>
+
+        <!-- Stats Panel -->
+        <div class="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-700 rounded-lg">
+            <div>
+                <p class="text-sm text-gray-400">Current Money</p>
+                <p id="money-display" class="text-3xl font-extrabold text-green-400">$1.00</p>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-gray-400">Win Streak</p>
+                <p id="streak-display" class="text-3xl font-bold text-yellow-400">0</p>
+            </div>
+            <div class="col-span-2 mt-2">
+                <p class="text-sm text-gray-400">Heads Chance</p>
+                <p id="chance-display" class="text-xl font-bold text-blue-300">20%</p>
+            </div>
+            <!-- MPS/Passive Income removed -->
+        </div>
+
+        <!-- Coin Flip Area -->
+        <div class="text-center mb-8">
+            <!-- Coin Visual is now centered using flex -->
+            <div id="coin-visual" class="mb-4 h-16 flex items-center justify-center transition-colors duration-500">
+                <!-- SVG Coin goes here -->
+            </div>
+            <div id="result-message" class="text-xl font-bold mb-4 h-8 transition-colors duration-300">
+                Ready to Flip!
+            </div>
+            <button id="flip-button" class="flip-btn w-full p-4 rounded-xl text-xl font-bold uppercase tracking-wider shadow-lg">
+                Flip Coin!
+            </button>
+        </div>
+
+        <!-- Upgrades Section -->
+        <div class="bg-gray-800 p-4 rounded-xl">
+            <h2 class="text-2xl font-semibold mb-3 border-b border-gray-600 pb-2 text-indigo-400">Upgrades</h2>
+
+            <!-- Profit Upgrade -->
+            <div class="flex flex-col sm:flex-row justify-between items-center p-3 mb-2 bg-gray-700 rounded-lg">
+                <div class="text-left mb-2 sm:mb-0">
+                    <p class="font-bold">Base Profit Multiplier</p>
+                    <p id="profit-stat" class="text-sm text-gray-300">+$1.00 per win</p>
+                    <p id="coin-name" class="text-sm font-semibold text-gray-400"></p>
+                </div>
+                <button id="buy-profit-upgrade" onclick="buyProfitUpgrade()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 text-sm">
+                    Buy ($100)
+                </button>
+            </div>
+
+            <!-- Probability Upgrade -->
+            <div class="flex flex-col sm:flex-row justify-between items-center p-3 mb-2 bg-gray-700 rounded-lg">
+                <div class="text-left mb-2 sm:mb-0">
+                    <p class="font-bold">Heads Chance Multiplier</p>
+                    <p id="prob-stat" class="text-sm text-gray-300">Current: 20%</p>
+                </div>
+                <button id="buy-prob-upgrade" onclick="buyProbabilityUpgrade()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 text-sm">
+                    Buy ($500)
+                </button>
+            </div>
+            
+            <!-- MPS Upgrade Section was removed -->
+        </div>
+
+        <!-- Message Box for Alerts (No alert() allowed) -->
+        <div id="message-box" class="fixed top-0 left-0 right-0 p-4 text-center bg-red-600 text-white font-bold hidden transition-opacity duration-300 opacity-0" role="alert">
+            <!-- Message content goes here -->
+        </div>
+    </div>
+
+    <script>
+        // Global variables, using numbers for currency
+        let money = 1.00;
+        let baseProfit = 1.00; // Base win amount
+        let currentStreak = 0;
+
+        // Profit Multiplier Upgrade
+        let profitLevel = 0;
+        let profitCost = 100.00;
+
+        // Probability Upgrade
+        let winChance = 0.20; // Starts at 20%
+        let probLevel = 0;
+        let probCost = 500.00;
+
+        // UI Element references
+        const moneyDisplay = document.getElementById('money-display');
+        const streakDisplay = document.getElementById('streak-display');
+        const chanceDisplay = document.getElementById('chance-display');
+        const resultMessage = document.getElementById('result-message');
+        const flipButton = document.getElementById('flip-button');
+        const coinVisual = document.getElementById('coin-visual');
+        const coinName = document.getElementById('coin-name');
+        
+        const profitUpgradeButton = document.getElementById('buy-profit-upgrade');
+        const profitStat = document.getElementById('profit-stat');
+        
+        const probUpgradeButton = document.getElementById('buy-prob-upgrade');
+        const probStat = document.getElementById('prob-stat');
+        
+        const messageBox = document.getElementById('message-box');
+
+        /**
+         * Utility function to show a temporary message.
+         * @param {string} message - The text to display.
+         * @param {string} bgColor - Tailwind background color class (e.g., 'bg-red-600').
+         */
+        function showMessage(message, bgColor) {
+            messageBox.textContent = message;
+            messageBox.className = `fixed top-0 left-0 right-0 p-4 text-center ${bgColor} text-white font-bold transition-opacity duration-300 opacity-100 block`;
+
+            setTimeout(() => {
+                // Hides the element using 'hidden' after transition
+                messageBox.className = `fixed top-0 left-0 right-0 p-4 text-center bg-red-600 text-white font-bold transition-opacity duration-300 opacity-0 hidden`;
+            }, 2500);
+        }
+        
+        /**
+         * Determines the coin stage based on the profit level and returns the SVG.
+         * The SVG size is set to 50x50.
+         * @returns {{name: string, svg: string, color: string}} Coin visual properties.
+         */
+        function getCoinStage() {
+            const size = 50;
+            let svg = '';
+            let name = '';
+            let color = '';
+
+            // Copper Coin (Level 0-4)
+            if (profitLevel < 5) {
+                name = "Copper Coin";
+                color = 'text-amber-700';
+                svg = `<svg width="${size}" height="${size}" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="45" fill="#B87333" stroke="#8B4513" stroke-width="6"/>
+                    <text x="50" y="55" font-family="sans-serif" font-size="30" fill="#E8C3A9" text-anchor="middle">$</text>
+                </svg>`;
+            // Silver Coin (Level 5-9)
+            } else if (profitLevel < 10) {
+                name = "Silver Coin";
+                color = 'text-gray-300';
+                svg = `<svg width="${size}" height="${size}" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="45" fill="#C0C0C0" stroke="#A9A9A9" stroke-width="6"/>
+                    <text x="50" y="55" font-family="sans-serif" font-size="30" fill="#404040" text-anchor="middle">S</text>
+                    <path d="M50 20 L25 50 L75 50 Z" fill="#E0E0E0"/>
+                </svg>`;
+            // Gold Coin (Level 10+)
+            } else {
+                name = "Gold Coin";
+                color = 'text-yellow-400';
+                svg = `<svg width="${size}" height="${size}" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="45" fill="#FFD700" stroke="#DAA520" stroke-width="6"/>
+                    <path d="M50 15 L20 40 L50 85 L80 40 Z" fill="#FFFACD"/>
+                    <text x="50" y="55" font-family="sans-serif" font-size="30" fill="#8B4513" text-anchor="middle">G</text>
+                </svg>`;
+            }
+            return { name, svg, color };
+        }
+
+        /**
+         * Updates all UI elements based on current game state.
+         */
+        function updateUI() {
+            // Main stats
+            moneyDisplay.textContent = `$${money.toFixed(2)}`;
+            streakDisplay.textContent = currentStreak;
+            chanceDisplay.textContent = `${(winChance * 100).toFixed(0)}% Heads`;
+
+            // Coin visual update
+            const coin = getCoinStage();
+            coinVisual.innerHTML = coin.svg; // Inject the SVG string
+            coinVisual.className = `mb-4 h-16 flex items-center justify-center transition-colors duration-500 ${coin.color}`; 
+            coinName.textContent = `Coin Stage: ${coin.name}`;
+
+            // --- Profit Upgrade UI ---
+            profitStat.textContent = `+$${baseProfit.toFixed(2)} per win (Level ${profitLevel})`;
+            profitUpgradeButton.textContent = `Buy ($${profitCost.toFixed(2)})`;
+            profitUpgradeButton.disabled = money < profitCost;
+            
+            // --- Probability Upgrade UI ---
+            probStat.textContent = `Heads Chance: ${(winChance * 100).toFixed(0)}% (Level ${probLevel})`;
+            probUpgradeButton.textContent = `Buy ($${probCost.toFixed(2)})`;
+            probUpgradeButton.disabled = money < probCost || winChance >= 1.0; // Max at 100%
+            
+            // Common styling for disabled buttons
+            [profitUpgradeButton, probUpgradeButton].forEach(button => { // MPS button removed
+                if (button.disabled) {
+                    button.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    button.classList.add('bg-gray-500', 'cursor-not-allowed');
+                } else {
+                    button.classList.remove('bg-gray-500', 'cursor-not-allowed');
+                    button.classList.add('bg-green-600', 'hover:bg-green-700');
+                }
+            });
+        }
+
+        /**
+         * Handles the coin flip logic.
+         */
+        function flipCoin() {
+            flipButton.disabled = true; // Disable button during flip animation/delay
+
+            // Determine result based on current winChance
+            const result = Math.random() < winChance ? 1 : 0; // 1 = Heads (Win), 0 = Tails (Loss)
+
+            // Simulate a brief flip animation delay
+            resultMessage.textContent = "Flipping...";
+            resultMessage.classList.remove('text-green-400', 'text-red-400', 'text-yellow-400');
+            resultMessage.classList.add('text-yellow-400');
+
+            setTimeout(() => {
+                if (result === 1) {
+                    // --- WIN (Heads) ---
+                    currentStreak++;
+
+                    // Calculate multiplier based on streak (2x for 2, 3x for 3+)
+                    let multiplier = 1;
+                    if (currentStreak === 2) {
+                        multiplier = 2; 
+                    } else if (currentStreak >= 3) {
+                        multiplier = 3; 
+                    }
+
+                    const profit = baseProfit * multiplier;
+                    money += profit;
+
+                    resultMessage.textContent = `HEADS! Win! +$${profit.toFixed(2)} (x${multiplier})`;
+                    resultMessage.classList.remove('text-yellow-400');
+                    resultMessage.classList.add('text-green-400');
+                    showMessage(`Awesome! Streak: ${currentStreak}`, 'bg-green-600');
+
+                } else {
+                    // --- LOSS (Tails) ---
+                    currentStreak = 0;
+                    resultMessage.textContent = "TAILS! Loss. Streak Reset.";
+                    resultMessage.classList.remove('text-yellow-400');
+                    resultMessage.classList.add('text-red-400');
+                    showMessage(`Tails! No luck this time.`, 'bg-red-600');
+                }
+
+                updateUI();
+                flipButton.disabled = false; // Re-enable button
+            }, 750); // Delay for user feedback
+        }
+
+        /**
+         * Handles the purchase of the Base Profit Upgrade.
+         */
+        function buyProfitUpgrade() {
+            if (money >= profitCost) {
+                money -= profitCost;
+                baseProfit += 1.00; // Increase base profit by a flat $1.00
+                profitLevel++;
+
+                // Increase the cost for the next purchase: 1.5x of the previous cost, rounded up.
+                profitCost = Math.ceil(profitCost * 1.5);
+
+                showMessage(`Profit upgraded! New base profit: $${baseProfit.toFixed(2)}`, 'bg-indigo-600');
+            } else {
+                showMessage(`Not enough money! Need $${profitCost.toFixed(2)}`, 'bg-red-600');
+            }
+            updateUI();
+        }
+
+        /**
+         * Handles the purchase of the Probability Upgrade.
+         */
+        function buyProbabilityUpgrade() {
+            if (money >= probCost && winChance < 1.0) {
+                money -= probCost;
+                
+                // Increase chance by 5%, capped at 100%
+                winChance = Math.min(1.0, winChance + 0.05); 
+                probLevel++;
+
+                // Increase the cost for the next purchase: 2x of the previous cost.
+                probCost *= 2; 
+
+                showMessage(`Heads chance increased! Now: ${(winChance * 100).toFixed(0)}%`, 'bg-blue-600');
+            } else if (winChance >= 1.0) {
+                 showMessage(`Heads chance is already 100%!`, 'bg-yellow-600');
+            } else {
+                showMessage(`Not enough money! Need $${probCost.toFixed(2)}`, 'bg-red-600');
+            }
+            updateUI();
+        }
+
+        // Initial setup and event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            updateUI();
+            flipButton.addEventListener('click', flipCoin);
+        });
+
+    </script>
+</body>
+</html>
