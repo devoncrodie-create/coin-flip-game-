@@ -33,74 +33,152 @@
             50% { box-shadow: 0 0 15px rgba(107, 70, 193, 0.5); }
             100% { box-shadow: 0 0 0 rgba(107, 70, 193, 0); }
         }
+
+        /* --- Coin Flip Animation --- */
+        @keyframes coin-spin {
+            0% { transform: rotateY(0deg) scale(1); opacity: 1; }
+            50% { transform: rotateY(1080deg) scale(0.7); opacity: 0.5; } /* 3 full rotations, shrinks */
+            100% { transform: rotateY(1800deg) scale(1); opacity: 1; } /* 5 full rotations, returns to size */
+        }
+        .flipping-coin {
+            transform-style: preserve-3d;
+            animation: coin-spin 0.7s cubic-bezier(0.4, 0, 0.2, 1); /* Quick, snappy animation */
+        }
+        
+        .nav-btn {
+            @apply bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition duration-150;
+        }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
 
     <div id="game-container" class="container-card w-full max-w-lg mx-auto p-6 rounded-xl text-white">
 
-        <h1 class="text-3xl font-bold text-center mb-6 text-indigo-300">Coin Flip Tycoon</h1>
+        <!-- Header -->
+        <h1 class="text-3xl font-bold text-center mb-4 text-indigo-300">Coin Flip Tycoon</h1>
+        <div id="auth-status" class="text-xs text-center mb-4 text-gray-400">Loading game data...</div>
+        
+        <!-- --- MAIN MENU SCREEN --- -->
+        <div id="menu-screen" class="hidden">
+            <h2 class="text-2xl font-semibold mb-4 text-center">Welcome, Flipper!</h2>
+            <div class="p-4 bg-gray-700 rounded-lg shadow-lg">
+                
+                <!-- Section for setting a new name (only visible if name is default) -->
+                <div id="name-input-section">
+                    <label for="username-input" class="block text-sm font-medium mb-2 text-gray-300">Set Your Name (3-15 chars):</label>
+                    <input type="text" id="username-input" class="w-full p-3 mb-4 rounded-lg bg-gray-800 text-white border border-indigo-500 focus:outline-none" placeholder="Enter name">
+                </div>
 
-        <!-- Stats Panel -->
-        <div class="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-700 rounded-lg">
-            <div>
-                <p class="text-sm text-gray-400">Current Money</p>
-                <p id="money-display" class="text-3xl font-extrabold text-green-400">$1.00</p>
+                <!-- Section for displaying the locked name (only visible if name is set) -->
+                <div id="name-display-section" class="hidden p-4 mb-4 bg-gray-800 rounded-lg border-2 border-indigo-500">
+                    <p class="block text-lg font-medium mb-1 text-gray-300">Logged in as:</p>
+                    <p id="locked-username" class="text-3xl font-extrabold text-indigo-400 mb-2"></p>
+                    <p class="text-sm text-yellow-400">Name is locked and cannot be changed.</p>
+                </div>
+                
+                <button onclick="setUserNameAndStart()" id="start-flip-button" class="nav-btn w-full mb-3 bg-green-600 hover:bg-green-700">Start Flipping</button>
+                <button onclick="renderScreen('leaderboard')" class="nav-btn w-full bg-indigo-500">View Leaderboard</button>
             </div>
-            <div class="text-right">
-                <p class="text-sm text-gray-400">Win Streak</p>
-                <p id="streak-display" class="text-3xl font-bold text-yellow-400">0</p>
-            </div>
-            <div class="col-span-2 mt-2">
-                <p class="text-sm text-gray-400">Heads Chance</p>
-                <p id="chance-display" class="text-xl font-bold text-blue-300">20%</p>
-            </div>
-            <!-- MPS/Passive Income removed -->
         </div>
 
-        <!-- Coin Flip Area -->
-        <div class="text-center mb-8">
-            <!-- Coin Visual is now centered using flex -->
-            <div id="coin-visual" class="mb-4 h-16 flex items-center justify-center transition-colors duration-500">
-                <!-- SVG Coin goes here -->
-            </div>
-            <div id="result-message" class="text-xl font-bold mb-4 h-8 transition-colors duration-300">
-                Ready to Flip!
-            </div>
-            <button id="flip-button" class="flip-btn w-full p-4 rounded-xl text-xl font-bold uppercase tracking-wider shadow-lg">
-                Flip Coin!
-            </button>
-        </div>
-
-        <!-- Upgrades Section -->
-        <div class="bg-gray-800 p-4 rounded-xl">
-            <h2 class="text-2xl font-semibold mb-3 border-b border-gray-600 pb-2 text-indigo-400">Upgrades</h2>
-
-            <!-- Profit Upgrade -->
-            <div class="flex flex-col sm:flex-row justify-between items-center p-3 mb-2 bg-gray-700 rounded-lg">
-                <div class="text-left mb-2 sm:mb-0">
-                    <p class="font-bold">Base Profit Multiplier</p>
-                    <p id="profit-stat" class="text-sm text-gray-300">+$1.00 per win</p>
-                    <p id="coin-name" class="text-sm font-semibold text-gray-400"></p>
-                </div>
-                <button id="buy-profit-upgrade" onclick="buyProfitUpgrade()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 text-sm">
-                    Buy ($100)
-                </button>
-            </div>
-
-            <!-- Probability Upgrade -->
-            <div class="flex flex-col sm:flex-row justify-between items-center p-3 mb-2 bg-gray-700 rounded-lg">
-                <div class="text-left mb-2 sm:mb-0">
-                    <p class="font-bold">Heads Chance Multiplier</p>
-                    <p id="prob-stat" class="text-sm text-gray-300">Current: 20%</p>
-                </div>
-                <button id="buy-prob-upgrade" onclick="buyProbabilityUpgrade()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 text-sm">
-                    Buy ($500)
-                </button>
+        <!-- --- GAME SCREEN --- -->
+        <div id="game-screen" class="hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="player-name-display" class="text-xl font-semibold text-white">Player: Anon</h2>
+                <button onclick="renderScreen('menu')" class="nav-btn text-sm py-1 px-3">Menu</button>
             </div>
             
-            <!-- MPS Upgrade Section was removed -->
+            <!-- Stats Panel -->
+            <div class="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-700 rounded-lg">
+                <div>
+                    <p class="text-sm text-gray-400">Current Money</p>
+                    <p id="money-display" class="text-3xl font-extrabold text-green-400">$1.00</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-400">Win Streak</p>
+                    <p id="streak-display" class="text-3xl font-bold text-yellow-400">0</p>
+                </div>
+                <div class="col-span-2 mt-2">
+                    <p class="text-sm text-gray-400">Heads Chance</p>
+                    <p id="chance-display" class="text-xl font-bold text-blue-300">20%</p>
+                </div>
+            </div>
+
+            <!-- Coin Flip Area -->
+            <div class="text-center mb-8">
+                <div id="coin-visual" class="mb-4 h-16 flex items-center justify-center transition-colors duration-500">
+                    <!-- SVG Coin goes here -->
+                </div>
+                <div id="result-message" class="text-xl font-bold mb-4 h-8 transition-colors duration-300">
+                    Ready to Flip!
+                </div>
+                <button id="flip-button" class="flip-btn w-full p-4 rounded-xl text-xl font-bold uppercase tracking-wider shadow-lg">
+                    Flip Coin!
+                </button>
+            </div>
+
+            <!-- Upgrades Section -->
+            <div class="bg-gray-800 p-4 rounded-xl">
+                <h2 class="text-2xl font-semibold mb-3 border-b border-gray-600 pb-2 text-indigo-400">Upgrades</h2>
+                
+                <!-- Coin Quality Upgrade (New) -->
+                <div class="flex flex-col sm:flex-row justify-between items-center p-3 mb-2 bg-gray-700 rounded-lg">
+                    <div class="text-left mb-2 sm:mb-0">
+                        <p class="font-bold">Coin Quality Upgrade</p>
+                        <p id="coin-upgrade-stat" class="text-sm text-gray-300">Current: Copper Coin</p>
+                    </div>
+                    <button id="buy-coin-upgrade" onclick="buyCoinUpgrade()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 text-sm">
+                        Upgrade ($1,500)
+                    </button>
+                </div>
+
+                <!-- Profit Upgrade -->
+                <div class="flex flex-col sm:flex-row justify-between items-center p-3 mb-2 bg-gray-700 rounded-lg">
+                    <div class="text-left mb-2 sm:mb-0">
+                        <p class="font-bold">Base Profit Multiplier</p>
+                        <p id="profit-stat" class="text-sm text-gray-300">+$1.00 per win</p>
+                        <p id="coin-name" class="text-sm font-semibold text-gray-400"></p>
+                    </div>
+                    <button id="buy-profit-upgrade" onclick="buyProfitUpgrade()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 text-sm">
+                        Buy ($100)
+                    </button>
+                </div>
+
+                <!-- Probability Upgrade -->
+                <div class="flex flex-col sm:flex-row justify-between items-center p-3 mb-2 bg-gray-700 rounded-lg">
+                    <div class="text-left mb-2 sm:mb-0">
+                        <p class="font-bold">Heads Chance Multiplier</p>
+                        <p id="prob-stat" class="text-sm text-gray-300">Current: 20%</p>
+                    </div>
+                    <button id="buy-prob-upgrade" onclick="buyProbabilityUpgrade()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 text-sm">
+                        Buy ($500)
+                    </button>
+                </div>
+                
+            </div>
         </div>
+
+        <!-- --- LEADERBOARD SCREEN --- -->
+        <div id="leaderboard-screen" class="hidden">
+            <h2 class="text-2xl font-semibold mb-4 text-center text-indigo-400">Top Flippers</h2>
+            <div class="p-4 bg-gray-700 rounded-lg">
+                <table class="min-w-full text-left text-sm font-light">
+                    <thead class="border-b font-medium border-gray-600">
+                        <tr>
+                            <th scope="col" class="px-3 py-2">Rank</th>
+                            <th scope="col" class="px-3 py-2">Name</th>
+                            <th scope="col" class="px-3 py-2 text-right">Money</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <!-- Leaderboard rows will be inserted here -->
+                        <tr><td colspan="3" class="text-center py-4 text-gray-400">Loading scores...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <button onclick="renderScreen('menu')" class="nav-btn w-full mt-6">Back to Menu</button>
+        </div>
+
 
         <!-- Message Box for Alerts (No alert() allowed) -->
         <div id="message-box" class="fixed top-0 left-0 right-0 p-4 text-center bg-red-600 text-white font-bold hidden transition-opacity duration-300 opacity-0" role="alert">
@@ -108,20 +186,77 @@
         </div>
     </div>
 
+    <!-- Firebase CDN Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, orderBy, limit, serverTimestamp, setLogLevel, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Expose Firebase functions to the global scope for use in the main script block
+        window.initializeApp = initializeApp;
+        window.getAuth = getAuth;
+        window.signInAnonymously = signInAnonymously;
+        window.signInWithCustomToken = signInWithCustomToken;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.getFirestore = getFirestore;
+        window.doc = doc;
+        window.getDoc = getDoc;
+        window.setDoc = setDoc;
+        window.onSnapshot = onSnapshot;
+        window.collection = collection;
+        window.query = query;
+        window.orderBy = orderBy;
+        window.limit = limit;
+        window.serverTimestamp = serverTimestamp;
+        window.setLogLevel = setLogLevel;
+        window.where = where; // Exposed for querying
+        window.getDocs = getDocs; // Exposed for querying
+
+        // Automatically initialize Firebase on load
+        window.addEventListener('DOMContentLoaded', () => {
+            if (typeof initFirebase === 'function') {
+                initFirebase();
+            } else {
+                console.error("Firebase initialization function not found.");
+            }
+        });
+    </script>
+
+
     <script>
-        // Global variables, using numbers for currency
-        let money = 1.00;
-        let baseProfit = 1.00; // Base win amount
-        let currentStreak = 0;
+        // NOTE ON ASSETS: Because this environment only supports a single HTML file, 
+        // we use inline SVGs for coin images and cannot load assets from a local folder.
 
-        // Profit Multiplier Upgrade
-        let profitLevel = 0;
-        let profitCost = 100.00;
+        // --- FIREBASE GLOBALS ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Probability Upgrade
-        let winChance = 0.20; // Starts at 20%
-        let probLevel = 0;
-        let probCost = 500.00;
+        let app;
+        let db;
+        let auth;
+        let userId = null; 
+        let isAuthReady = false;
+
+        // --- GAME STATE ---
+        let gameState = {
+            money: 1.00,
+            baseProfit: 1.00, // Base win amount
+            currentStreak: 0,
+            profitLevel: 0,
+            profitCost: 100.00,
+            winChance: 0.20, // Starts at 20%
+            probLevel: 0,
+            probCost: 500.00,
+            coinStage: 0, // 0: Copper, 1: Silver, 2: Gold
+            userName: 'AnonFlipper' // Default name
+        };
+
+        // --- UI/LEADERBOARD STATE ---
+        let currentScreen = 'menu';
+        let leaderboardData = [];
+        const silverCost = 1500.00;
+        const goldCost = 20000.00;
 
         // UI Element references
         const moneyDisplay = document.getElementById('money-display');
@@ -131,68 +266,348 @@
         const flipButton = document.getElementById('flip-button');
         const coinVisual = document.getElementById('coin-visual');
         const coinName = document.getElementById('coin-name');
-        
         const profitUpgradeButton = document.getElementById('buy-profit-upgrade');
         const profitStat = document.getElementById('profit-stat');
-        
         const probUpgradeButton = document.getElementById('buy-prob-upgrade');
         const probStat = document.getElementById('prob-stat');
-        
+        const coinUpgradeButton = document.getElementById('buy-coin-upgrade');
+        const coinUpgradeStat = document.getElementById('coin-upgrade-stat');
         const messageBox = document.getElementById('message-box');
+        const playerNameDisplay = document.getElementById('player-name-display');
+        const usernameInput = document.getElementById('username-input');
+        const leaderboardBody = document.getElementById('leaderboard-body');
+        const authStatus = document.getElementById('auth-status');
+        
+        // NEW MENU REFS for name locking
+        const nameInputSection = document.getElementById('name-input-section');
+        const nameDisplaySection = document.getElementById('name-display-section');
+        const lockedUsername = document.getElementById('locked-username');
+        const startFlipButton = document.getElementById('start-flip-button');
+        
+        // --- FIREBASE INITIALIZATION & AUTH ---
+
+        window.initFirebase = async function() {
+            try {
+                // setLogLevel('Debug'); // Enable for debugging
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                authStatus.textContent = "Authenticating...";
+
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                // Listener for authentication state changes
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        authStatus.textContent = `User ID: ${userId}`;
+                        isAuthReady = true;
+                        loadGameStateFromFirestore(); // Load name and stats
+                        listenToLeaderboard(); // Start listening for leaderboard changes
+                    } else {
+                        userId = null;
+                        authStatus.textContent = "Signed in anonymously. Game state not saved.";
+                        isAuthReady = true;
+                    }
+                    renderScreen('menu'); // Show menu once auth is ready
+                });
+
+            } catch (error) {
+                console.error("Firebase initialization or authentication failed:", error);
+                authStatus.textContent = `Error: ${error.message}`;
+                renderScreen('menu'); // Still show menu even if auth fails
+            }
+        }
+        
+        // --- FIRESTORE UTILITIES ---
+
+        // Private path for game state
+        function getGameStateRef() {
+            if (!userId) return null;
+            // Path: /artifacts/{appId}/users/{userId}/gameData/state
+            return doc(db, `artifacts/${appId}/users/${userId}/gameData/state`);
+        }
+
+        // Public path for the leaderboard
+        function getLeaderboardRef() {
+            // Path: /artifacts/{appId}/public/data/leaderboard
+            return collection(db, `artifacts/${appId}/public/data/leaderboard`);
+        }
+
+        async function loadGameStateFromFirestore() {
+            if (!getGameStateRef()) return;
+            try {
+                const docSnap = await getDoc(getGameStateRef());
+
+                if (docSnap.exists()) {
+                    const loadedState = docSnap.data();
+                    // Load all state properties
+                    Object.assign(gameState, loadedState);
+                    showMessage(`Welcome back, ${gameState.userName}!`, 'bg-green-600');
+                } else {
+                    // New user, save initial state
+                    await saveGameStateToFirestore();
+                }
+            } catch (e) {
+                console.error("Error loading game state:", e);
+                showMessage("Error loading game state. Starting fresh.", 'bg-red-600');
+            }
+            // Update the UI after loading (or failing to load)
+            updateUI(); 
+        }
+
+        async function saveGameStateToFirestore() {
+            if (!getGameStateRef()) return;
+            try {
+                await setDoc(getGameStateRef(), gameState);
+                saveLeaderboardScore(); 
+            } catch (e) {
+                console.error("Error saving game state:", e);
+                showMessage("Error saving game progress to cloud.", 'bg-red-600');
+            }
+        }
+
+        async function saveLeaderboardScore() {
+            if (!getLeaderboardRef() || gameState.userName === 'AnonFlipper') return;
+            
+            const userDocRef = doc(getLeaderboardRef(), userId); // Use UID as doc ID
+
+            try {
+                await setDoc(userDocRef, {
+                    name: gameState.userName,
+                    score: parseFloat(gameState.money.toFixed(2)),
+                    profitLevel: gameState.profitLevel,
+                    timestamp: serverTimestamp()
+                }, { merge: true });
+            } catch (e) {
+                console.error("Error saving score to leaderboard:", e);
+            }
+        }
+
+        function listenToLeaderboard() {
+            if (!getLeaderboardRef()) return;
+
+            const q = query(getLeaderboardRef(), orderBy("score", "desc"), limit(10));
+
+            onSnapshot(q, (snapshot) => {
+                leaderboardData = [];
+                snapshot.forEach((doc) => {
+                    leaderboardData.push(doc.data());
+                });
+                if (currentScreen === 'leaderboard') {
+                    renderLeaderboard();
+                }
+            }, (error) => {
+                console.error("Error listening to leaderboard:", error);
+                leaderboardData = [{ name: 'Error', score: 0.00 }];
+                if (currentScreen === 'leaderboard') {
+                    renderLeaderboard();
+                }
+            });
+        }
+        
+        // --- SCREEN RENDERING ---
+        
+        /**
+         * Renders the correct view for the main menu based on whether the name is set.
+         */
+        function renderMenuState() {
+            const nameIsSet = gameState.userName !== 'AnonFlipper';
+            
+            if (nameIsSet) {
+                // Name is set, show read-only view
+                nameInputSection.classList.add('hidden');
+                nameDisplaySection.classList.remove('hidden');
+                lockedUsername.textContent = gameState.userName;
+                startFlipButton.textContent = "Continue Flipping";
+            } else {
+                // Name is not set, show input view
+                nameInputSection.classList.remove('hidden');
+                nameDisplaySection.classList.add('hidden');
+                startFlipButton.textContent = "Set Name and Start Flipping";
+                // Ensure input field is populated with current (default) value
+                usernameInput.value = gameState.userName;
+            }
+        }
+
+
+        function renderScreen(screen) {
+            currentScreen = screen;
+            document.getElementById('menu-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('leaderboard-screen').classList.add('hidden');
+
+            document.getElementById(`${screen}-screen`).classList.remove('hidden');
+
+            // Specific updates for each screen
+            if (screen === 'game') {
+                updateUI();
+            } else if (screen === 'menu') {
+                renderMenuState(); // Use new function here
+            } else if (screen === 'leaderboard') {
+                renderLeaderboard();
+            }
+        }
+
+        function renderLeaderboard() {
+            leaderboardBody.innerHTML = '';
+            if (leaderboardData.length === 0) {
+                leaderboardBody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-400">No scores yet! Be the first!</td></tr>';
+                return;
+            }
+
+            leaderboardData.forEach((entry, index) => {
+                const rank = index + 1;
+                const row = document.createElement('tr');
+                row.className = `border-b border-gray-700 ${entry.name === gameState.userName ? 'bg-indigo-700 font-extrabold' : 'hover:bg-gray-600'}`;
+                
+                row.innerHTML = `
+                    <td class="px-3 py-2">${rank}</td>
+                    <td class="px-3 py-2">${entry.name}</td>
+                    <td class="px-3 py-2 text-right text-green-300">$${entry.score.toFixed(2)}</td>
+                `;
+                leaderboardBody.appendChild(row);
+            });
+        }
+        
+        // --- GAME LOGIC ---
+
+        function isValidUsername(name) {
+            if (!name || name.trim().length < 3 || name.trim().length > 15) {
+                showMessage("Name must be between 3 and 15 characters.", 'bg-red-600');
+                return false;
+            }
+            // Simple filter against common inappropriate terms
+            const inappropriateWords = ["shit", "damn", "fuck", "bitch", "crap", "ass", "pussy", "dick"];
+            const lowerName = name.toLowerCase();
+            if (inappropriateWords.some(word => lowerName.includes(word))) {
+                showMessage("Inappropriate language detected. Please choose another name.", 'bg-red-600');
+                return false;
+            }
+            return true;
+        }
 
         /**
+         * Checks the leaderboard collection to see if a username is already taken.
+         * @param {string} name The username to check.
+         * @returns {Promise<boolean>} True if the name is taken, false otherwise.
+         */
+        async function isUsernameTaken(name) {
+            if (!db) return false;
+            
+            try {
+                const leaderboardCollection = getLeaderboardRef();
+                // Query for any document where the 'name' field matches the requested name
+                const q = query(leaderboardCollection, where("name", "==", name));
+                const querySnapshot = await getDocs(q);
+                
+                // If the snapshot has any documents, the name is taken.
+                return !querySnapshot.empty;
+            } catch (e) {
+                console.error("Error checking username availability:", e);
+                // Default to allowing the name if there's a Firebase error (to prevent blocking the user)
+                return false; 
+            }
+        }
+
+        window.setUserNameAndStart = async function() {
+            if (gameState.userName !== 'AnonFlipper') {
+                // Name is already set and locked, just go to the game screen
+                renderScreen('game');
+                return;
+            }
+            
+            // Name is NOT set, proceed with input validation
+            const newName = usernameInput.value.trim();
+            if (isValidUsername(newName)) {
+                
+                // --- CHECK FOR DUPLICATE NAME ---
+                if (await isUsernameTaken(newName)) {
+                    showMessage(`The name "${newName}" is already taken. Please choose another one.`, 'bg-red-600');
+                    return;
+                }
+                // ------------------------------------
+
+                gameState.userName = newName;
+                await saveGameStateToFirestore();
+                renderScreen('game');
+            }
+        }
+        
+        /**
          * Utility function to show a temporary message.
-         * @param {string} message - The text to display.
-         * @param {string} bgColor - Tailwind background color class (e.g., 'bg-red-600').
          */
         function showMessage(message, bgColor) {
             messageBox.textContent = message;
             messageBox.className = `fixed top-0 left-0 right-0 p-4 text-center ${bgColor} text-white font-bold transition-opacity duration-300 opacity-100 block`;
 
             setTimeout(() => {
-                // Hides the element using 'hidden' after transition
-                messageBox.className = `fixed top-0 left-0 right-0 p-4 text-center bg-red-600 text-white font-bold transition-opacity duration-300 opacity-0 hidden`;
+                messageBox.classList.remove('opacity-100', 'block');
+                messageBox.classList.add('opacity-0', 'hidden');
             }, 2500);
         }
         
         /**
-         * Determines the coin stage based on the profit level and returns the SVG.
-         * The SVG size is set to 50x50.
-         * @returns {{name: string, svg: string, color: string}} Coin visual properties.
+         * Determines the coin stage and returns the SVG.
          */
         function getCoinStage() {
-            const size = 50;
+            const width = 80;
+            const height = 80;
+            const ellipseRx = 45;
+            const ellipseRy = 15; 
+            const edgeHeight = 10; 
+
             let svg = '';
             let name = '';
             let color = '';
+            let fillMain = '';
+            let fillEdge = '';
+            let textFill = '';
+            const stage = gameState.coinStage;
 
-            // Copper Coin (Level 0-4)
-            if (profitLevel < 5) {
+            // Stage 0: Copper Coin
+            if (stage === 0) {
                 name = "Copper Coin";
                 color = 'text-amber-700';
-                svg = `<svg width="${size}" height="${size}" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="50" cy="50" r="45" fill="#B87333" stroke="#8B4513" stroke-width="6"/>
-                    <text x="50" y="55" font-family="sans-serif" font-size="30" fill="#E8C3A9" text-anchor="middle">$</text>
-                </svg>`;
-            // Silver Coin (Level 5-9)
-            } else if (profitLevel < 10) {
+                fillMain = '#FF9933'; 
+                fillEdge = '#8B4513'; 
+                textFill = '#E8C3A9';
+            // Stage 1: Silver Coin
+            } else if (stage === 1) {
                 name = "Silver Coin";
                 color = 'text-gray-300';
-                svg = `<svg width="${size}" height="${size}" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="50" cy="50" r="45" fill="#C0C0C0" stroke="#A9A9A9" stroke-width="6"/>
-                    <text x="50" y="55" font-family="sans-serif" font-size="30" fill="#404040" text-anchor="middle">S</text>
-                    <path d="M50 20 L25 50 L75 50 Z" fill="#E0E0E0"/>
-                </svg>`;
-            // Gold Coin (Level 10+)
-            } else {
+                fillMain = '#C0C0C0'; 
+                fillEdge = '#A0A0A0'; 
+                textFill = '#222';
+            // Stage 2: Gold Coin
+            } else { // coinStage === 2
                 name = "Gold Coin";
                 color = 'text-yellow-400';
-                svg = `<svg width="${size}" height="${size}" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="50" cy="50" r="45" fill="#FFD700" stroke="#DAA520" stroke-width="6"/>
-                    <path d="M50 15 L20 40 L50 85 L80 40 Z" fill="#FFFACD"/>
-                    <text x="50" y="55" font-family="sans-serif" font-size="30" fill="#8B4513" text-anchor="middle">G</text>
-                </svg>`;
+                fillMain = '#FFD700'; 
+                fillEdge = '#DAA520'; 
+                textFill = '#8B4513';
             }
+
+            // SVG Coin with oblique view
+            svg = `<svg width="${width}" height="${height}" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Edge/Side of the coin -->
+                <rect x="${50 - ellipseRx}" y="${50 - ellipseRy}" width="${ellipseRx * 2}" height="${edgeHeight}" fill="${fillEdge}" />
+                <!-- Top face of the coin (Ellipse) -->
+                <ellipse cx="50" cy="${50 - ellipseRy}" rx="${ellipseRx}" ry="${ellipseRy}" fill="${fillMain}" stroke="${fillEdge}" stroke-width="2"/>
+                <!-- Bottom face of the coin (Visible edge) -->
+                <ellipse cx="50" cy="${50 - ellipseRy + edgeHeight}" rx="${ellipseRx}" ry="${ellipseRy}" fill="${fillMain}" opacity="0.8"/>
+                
+                <!-- Center text/icon on the top surface -->
+                <text x="50" y="${50 - ellipseRy + edgeHeight / 2 + 5}" font-family="sans-serif" font-size="20" font-weight="bold" fill="${textFill}" text-anchor="middle">
+                    ${name.charAt(0)}
+                </text>
+            </svg>`;
+            
             return { name, svg, color };
         }
 
@@ -200,10 +615,13 @@
          * Updates all UI elements based on current game state.
          */
         function updateUI() {
+            // Player name
+            playerNameDisplay.textContent = `Player: ${gameState.userName}`;
+            
             // Main stats
-            moneyDisplay.textContent = `$${money.toFixed(2)}`;
-            streakDisplay.textContent = currentStreak;
-            chanceDisplay.textContent = `${(winChance * 100).toFixed(0)}% Heads`;
+            moneyDisplay.textContent = `$${gameState.money.toFixed(2)}`;
+            streakDisplay.textContent = gameState.currentStreak;
+            chanceDisplay.textContent = `${(gameState.winChance * 100).toFixed(0)}% Heads`;
 
             // Coin visual update
             const coin = getCoinStage();
@@ -211,18 +629,43 @@
             coinVisual.className = `mb-4 h-16 flex items-center justify-center transition-colors duration-500 ${coin.color}`; 
             coinName.textContent = `Coin Stage: ${coin.name}`;
 
+            // --- Coin Upgrade UI ---
+            let nextCoinName = "";
+            let nextCoinCost = 0;
+
+            if (gameState.coinStage === 0) {
+                nextCoinName = "Silver Coin";
+                nextCoinCost = silverCost;
+            } else if (gameState.coinStage === 1) {
+                nextCoinName = "Gold Coin";
+                nextCoinCost = goldCost;
+            } else {
+                nextCoinName = "MAX";
+                nextCoinCost = Infinity;
+            }
+
+            if (gameState.coinStage < 2) {
+                coinUpgradeStat.textContent = `Next: ${nextCoinName} ($${nextCoinCost.toFixed(2)})`;
+                coinUpgradeButton.textContent = `Upgrade ($${nextCoinCost.toFixed(2)})`;
+                coinUpgradeButton.disabled = gameState.money < nextCoinCost;
+            } else {
+                coinUpgradeStat.textContent = `MAX Quality: ${coin.name}`;
+                coinUpgradeButton.textContent = `MAXED`;
+                coinUpgradeButton.disabled = true;
+            }
+
             // --- Profit Upgrade UI ---
-            profitStat.textContent = `+$${baseProfit.toFixed(2)} per win (Level ${profitLevel})`;
-            profitUpgradeButton.textContent = `Buy ($${profitCost.toFixed(2)})`;
-            profitUpgradeButton.disabled = money < profitCost;
+            profitStat.textContent = `+$${gameState.baseProfit.toFixed(2)} per win (Level ${gameState.profitLevel})`;
+            profitUpgradeButton.textContent = `Buy ($${gameState.profitCost.toFixed(2)})`;
+            profitUpgradeButton.disabled = gameState.money < gameState.profitCost;
             
             // --- Probability Upgrade UI ---
-            probStat.textContent = `Heads Chance: ${(winChance * 100).toFixed(0)}% (Level ${probLevel})`;
-            probUpgradeButton.textContent = `Buy ($${probCost.toFixed(2)})`;
-            probUpgradeButton.disabled = money < probCost || winChance >= 1.0; // Max at 100%
+            probStat.textContent = `Heads Chance: ${(gameState.winChance * 100).toFixed(0)}% (Level ${gameState.probLevel})`;
+            probUpgradeButton.textContent = `Buy ($${gameState.probCost.toFixed(2)})`;
+            probUpgradeButton.disabled = gameState.money < gameState.probCost || gameState.winChance >= 1.0; 
             
             // Common styling for disabled buttons
-            [profitUpgradeButton, probUpgradeButton].forEach(button => { // MPS button removed
+            [profitUpgradeButton, probUpgradeButton, coinUpgradeButton].forEach(button => {
                 if (button.disabled) {
                     button.classList.remove('bg-green-600', 'hover:bg-green-700');
                     button.classList.add('bg-gray-500', 'cursor-not-allowed');
@@ -236,97 +679,123 @@
         /**
          * Handles the coin flip logic.
          */
-        function flipCoin() {
-            flipButton.disabled = true; // Disable button during flip animation/delay
+        window.flipCoin = function() {
+            if (flipButton.disabled) return;
+            flipButton.disabled = true;
 
             // Determine result based on current winChance
-            const result = Math.random() < winChance ? 1 : 0; // 1 = Heads (Win), 0 = Tails (Loss)
+            const result = Math.random() < gameState.winChance ? 1 : 0; 
 
-            // Simulate a brief flip animation delay
+            // 1. Start Flip Animation
             resultMessage.textContent = "Flipping...";
-            resultMessage.classList.remove('text-green-400', 'text-red-400', 'text-yellow-400');
+            resultMessage.classList.remove('text-green-400', 'text-red-400');
             resultMessage.classList.add('text-yellow-400');
+            coinVisual.classList.add('flipping-coin');
 
-            setTimeout(() => {
+
+            setTimeout(async () => {
+                // 2. Stop Flip Animation
+                coinVisual.classList.remove('flipping-coin');
+
                 if (result === 1) {
                     // --- WIN (Heads) ---
-                    currentStreak++;
+                    gameState.currentStreak++;
 
-                    // Calculate multiplier based on streak (2x for 2, 3x for 3+)
+                    // Calculate multiplier based on streak 
                     let multiplier = 1;
-                    if (currentStreak === 2) {
+                    if (gameState.currentStreak === 2) {
                         multiplier = 2; 
-                    } else if (currentStreak >= 3) {
+                    } else if (gameState.currentStreak >= 3) {
                         multiplier = 3; 
                     }
 
-                    const profit = baseProfit * multiplier;
-                    money += profit;
+                    const profit = gameState.baseProfit * multiplier;
+                    gameState.money += profit;
 
                     resultMessage.textContent = `HEADS! Win! +$${profit.toFixed(2)} (x${multiplier})`;
                     resultMessage.classList.remove('text-yellow-400');
                     resultMessage.classList.add('text-green-400');
-                    showMessage(`Awesome! Streak: ${currentStreak}`, 'bg-green-600');
+                    showMessage(`Awesome! Streak: ${gameState.currentStreak}`, 'bg-green-600');
 
                 } else {
                     // --- LOSS (Tails) ---
-                    currentStreak = 0;
+                    gameState.currentStreak = 0;
                     resultMessage.textContent = "TAILS! Loss. Streak Reset.";
                     resultMessage.classList.remove('text-yellow-400');
                     resultMessage.classList.add('text-red-400');
                     showMessage(`Tails! No luck this time.`, 'bg-red-600');
                 }
 
+                await saveGameStateToFirestore(); // Save state after every flip
                 updateUI();
                 flipButton.disabled = false; // Re-enable button
-            }, 750); // Delay for user feedback
+            }, 750); // Matches animation duration
         }
 
-        /**
-         * Handles the purchase of the Base Profit Upgrade.
-         */
-        function buyProfitUpgrade() {
-            if (money >= profitCost) {
-                money -= profitCost;
-                baseProfit += 1.00; // Increase base profit by a flat $1.00
-                profitLevel++;
+        // --- Upgrade Functions ---
 
-                // Increase the cost for the next purchase: 1.5x of the previous cost, rounded up.
-                profitCost = Math.ceil(profitCost * 1.5);
+        window.buyCoinUpgrade = async function() {
+            let cost = 0;
+            let nextStage = gameState.coinStage + 1;
+            let nextCoinName = "";
 
-                showMessage(`Profit upgraded! New base profit: $${baseProfit.toFixed(2)}`, 'bg-indigo-600');
+            if (gameState.coinStage === 0) {
+                cost = silverCost;
+                nextCoinName = "Silver Coin";
+            } else if (gameState.coinStage === 1) {
+                cost = goldCost;
+                nextCoinName = "Gold Coin";
             } else {
-                showMessage(`Not enough money! Need $${profitCost.toFixed(2)}`, 'bg-red-600');
+                return; // Already maxed
+            }
+
+            if (gameState.money >= cost) {
+                gameState.money -= cost;
+                gameState.coinStage = nextStage;
+
+                showMessage(`Coin upgraded to ${nextCoinName}!`, 'bg-purple-600');
+                await saveGameStateToFirestore();
+            } else {
+                showMessage(`Not enough money! Need $${cost.toFixed(2)} to upgrade.`, 'bg-red-600');
             }
             updateUI();
         }
 
-        /**
-         * Handles the purchase of the Probability Upgrade.
-         */
-        function buyProbabilityUpgrade() {
-            if (money >= probCost && winChance < 1.0) {
-                money -= probCost;
-                
-                // Increase chance by 5%, capped at 100%
-                winChance = Math.min(1.0, winChance + 0.05); 
-                probLevel++;
+        window.buyProfitUpgrade = async function() {
+            if (gameState.money >= gameState.profitCost) {
+                gameState.money -= gameState.profitCost;
+                gameState.baseProfit += 1.00; 
+                gameState.profitLevel++;
+                gameState.profitCost = Math.ceil(gameState.profitCost * 1.5);
 
-                // Increase the cost for the next purchase: 2x of the previous cost.
-                probCost *= 2; 
+                showMessage(`Profit upgraded! New base profit: $${gameState.baseProfit.toFixed(2)}`, 'bg-indigo-600');
+                await saveGameStateToFirestore();
+            } else {
+                showMessage(`Not enough money! Need $${gameState.profitCost.toFixed(2)}`, 'bg-red-600');
+            }
+            updateUI();
+        }
 
-                showMessage(`Heads chance increased! Now: ${(winChance * 100).toFixed(0)}%`, 'bg-blue-600');
-            } else if (winChance >= 1.0) {
+        window.buyProbabilityUpgrade = async function() {
+            if (gameState.money >= gameState.probCost && gameState.winChance < 1.0) {
+                gameState.money -= gameState.probCost;
+                gameState.winChance = Math.min(1.0, gameState.winChance + 0.05); 
+                gameState.probLevel++;
+                gameState.probCost *= 2; 
+
+                showMessage(`Heads chance increased! Now: ${(gameState.winChance * 100).toFixed(0)}%`, 'bg-blue-600');
+                await saveGameStateToFirestore();
+            } else if (gameState.winChance >= 1.0) {
                  showMessage(`Heads chance is already 100%!`, 'bg-yellow-600');
             } else {
-                showMessage(`Not enough money! Need $${probCost.toFixed(2)}`, 'bg-red-600');
+                showMessage(`Not enough money! Need $${gameState.probCost.toFixed(2)}`, 'bg-red-600');
             }
             updateUI();
         }
 
-        // Initial setup and event listeners
+        // Initial setup
         document.addEventListener('DOMContentLoaded', () => {
-            updateUI();
+            // Note: Firebase init is handled by the module script above
             flipButton.addEventListener('click', flipCoin);
         });
 
